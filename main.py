@@ -2,6 +2,8 @@
 import keys
 # import libraries
 import tweepy
+import pandas as pd
+import numpy as np
 
 
 # Authentication
@@ -21,10 +23,16 @@ def twitterAuth():
     return api
 
 
-def getTweets(query, numberOfTweets):
-    tweet_list = []
-    fetched_tweets = api.search_tweets(q=query, count=numberOfTweets)
+def cleanTweet(text):
+    return 0
 
+
+def getTweets(query, numberOfTweets):
+    tweets = []
+    fetched_tweets = api.search_tweets(
+        q=query, count=numberOfTweets, lang="en")
+    # for tweet in fetched_tweets:
+    #     cleanTweet(tweet.text)
     return fetched_tweets
 
 
@@ -33,5 +41,5 @@ api = twitterAuth()
 
 # Set query and number of tweets to get
 query = "Elon Musk"
-numberOfTweets = 100
+numberOfTweets = 1
 tweets = getTweets(query, numberOfTweets)
