@@ -19,3 +19,19 @@ def twitterAuth():
         print("Authentication failed")
 
     return api
+
+
+def getTweets(query, numberOfTweets):
+    tweet_list = []
+    fetched_tweets = api.search_tweets(q=query, count=numberOfTweets)
+
+    return fetched_tweets
+
+
+# Get access to api
+api = twitterAuth()
+
+# Set query and number of tweets to get
+query = "Elon Musk"
+numberOfTweets = 100
+tweets = getTweets(query, numberOfTweets)
