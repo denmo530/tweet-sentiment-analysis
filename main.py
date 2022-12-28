@@ -72,39 +72,25 @@ def cleanTweet(text):
 
 
 def getTweets(query, numberOfTweets):
-    tweets = []
     fetched_tweets = api.search_tweets(
         q=query, count=numberOfTweets, lang="en", tweet_mode="extended")
 
-    for tweet in fetched_tweets:
-        try:
-            text = cleanTweet(tweet.retweeted_status.full_text)
-            tweets.append(text)
-        except:
-            text = cleanTweet(tweet.full_text)
-            tweets.append(text)
-    return tweets
+    return fetched_tweets
 
 
-def vectorize(tweets):
-    vectorizer = TfidfVectorizer(
-        max_features=2500, min_df=7, max_df=0.8, stop_words="english")
-    # fit and tranform using training text
-    processed_features = vectorizer.fit_transform(tweets).toarray()
+def vectorize(tweets, vectorizer):
+    # transform tweet data
+    vectorized_tweets = vectorizer.transform(tweets).toarray()
 
-    return processed_features
+    return vectorized_tweets
 
 
-# Get access to api
-api = twitterAuth()
-# Set query and number of tweets to get
-query = "#Nature"
-numberOfTweets = 100
-tweets = getTweets(query, numberOfTweets)
 data.Sentiment = data.Sentiment.apply(lambda x: sentimentDecoder(x))
 corpus = []
 corpus = data.Text.apply(cleanTweet)
-processed_features = vectorize(corpus)
+vectorizer = TfidfVectorizer(
+    max_features=2500, min_df=7, max_df=0.8, stop_words="english")
+processed_features = vectorizer.fit_transform(corpus).toarray()
 
 # Split training and test data
 x_train, x_test, y_train, y_test = train_test_split(
@@ -167,6 +153,40 @@ print(classification_report(y_test, grid_predictions_svm))
 print(confusion_matrix(y_test, grid_predictions_svm))
 print("Accuracy:", accuracy_score(y_test, grid_predictions_svm))
 print("\n")
+
+# Use the best model of the naive bayes search on tweets from twitter
+# Get access to api
+best_model = grid_nb.best_estimator_
+api = twitterAuth()
+# Set query and number of tweets to get
+query = "elonmusk"
+numberOfTweets = 100
+tweets = getTweets(query, numberOfTweets)
+processed_tweets = []
+for tweet in tweets:
+    try:
+        text = cleanTweet(tweet.retweeted_status.full_text)
+        processed_tweets.append(text)
+    except:
+        text = cleanTweet(tweet.full_text)
+        processed_tweets.append(text)
+
+vectorized_tweets = vectorize(processed_tweets, vectorizer)
+sentiment_predictions = best_model.predict(vectorized_tweets)
+# Zip the tweets and predictions together
+tweet_predictions = zip(tweets, sentiment_predictions)
+# Print tweet and prediction for each tweet
+print("\n###################\n")
+for tweet, sentiment_predictions in tweet_predictions:
+    try:
+        print(f"Tweet: {tweet.retweeted_status.full_text}")
+        print(f"Prediction: {sentiment_predictions}")
+        print("\n")
+    except:
+        print(f"Tweet: {tweet.full_text}")
+        print(f"Prediction: {sentiment_predictions}")
+        print("\n")
+print("\n###################\n")
 
 # Train data using ML classifier
 # Random forest
