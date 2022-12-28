@@ -2,8 +2,11 @@
 from sklearn.model_selection import GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.naive_bayes import MultinomialNB
+from sklearn.svm import SVC
+from sklearn.linear_model import SGDClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+from sklearn import metrics
 from sklearn.model_selection import train_test_split
 from nltk.tokenize import word_tokenize
 import re
@@ -102,30 +105,96 @@ data.Sentiment = data.Sentiment.apply(lambda x: sentimentDecoder(x))
 corpus = []
 corpus = data.Text.apply(cleanTweet)
 processed_features = vectorize(corpus)
+
 # Split training and test data
 x_train, x_test, y_train, y_test = train_test_split(
     processed_features, data.Sentiment, test_size=0.2, random_state=0)
 
+# Gridsearch parameters
+parameters = {
+    'n_estimators': [10, 50, 100],
+    'max_depth': [2, 5, 10]
+}
+
+parameters_nb = {'alpha': [0.1, 1, 10]}
+
+parameters_svm = {'loss': ['hinge', 'log_loss', 'modified_huber'],
+                  'penalty': ['l2', 'l1', 'elasticnet'],
+                  'alpha': [1e-2, 1e-3]}
+
+
+grid_search = GridSearchCV(RandomForestClassifier(),
+                           parameters, scoring="accuracy", n_jobs=-1)
+grid_search.fit(x_train, y_train)
+best_params = grid_search.best_params_
+best_model = grid_search.best_estimator_
+grid_predictions = best_model.predict(x_test)
+
+print("Grid Search: Random forest \n")
+print("Best score: ", grid_search.best_score_)
+print("Best parameters:", best_params)
+print("Best Model: ", best_model)
+print(classification_report(y_test, grid_predictions))
+print(confusion_matrix(y_test, grid_predictions))
+print("Accuracy:", accuracy_score(y_test, grid_predictions))
+print("\n")
+
+
+grid_nb = GridSearchCV(MultinomialNB(), parameters_nb,
+                       scoring="accuracy", n_jobs=-1)
+grid_nb.fit(x_train, y_train)
+grid_predictions_nb = best_model.predict(x_test)
+
+print("Grid Search: Naive Bayes \n")
+print("Best score: ", grid_nb.best_score_)
+print("Best parameters:", grid_nb.best_params_)
+print("Best Model: ", grid_nb.best_estimator_)
+print(classification_report(y_test, grid_predictions_nb))
+print(confusion_matrix(y_test, grid_predictions_nb))
+print("Accuracy:", accuracy_score(y_test, grid_predictions_nb))
+print("\n")
+
+grid_svm = GridSearchCV(SGDClassifier(), parameters_svm,
+                        scoring="accuracy", n_jobs=-1)
+grid_svm.fit(x_train, y_train)
+grid_predictions_svm = best_model.predict(x_test)
+
+print("Grid Search: SVM \n")
+print("Best score: ", grid_svm.best_score_)
+print("Best parameters:", grid_svm.best_params_)
+print("Best Model: ", grid_svm.best_estimator_)
+print(classification_report(y_test, grid_predictions_svm))
+print(confusion_matrix(y_test, grid_predictions_svm))
+print("Accuracy:", accuracy_score(y_test, grid_predictions_svm))
+print("\n")
 
 # Train data using ML classifier
 # Random forest
-text_classifier = RandomForestClassifier(n_estimators=200, random_state=0)
-text_classifier.fit(x_train, y_train)
-RandomForestClassifier(bootstrap=True, class_weight=None, criterion="gini", max_depth=None, max_features="auto", max_leaf_nodes=None, min_impurity_decrease=0.0,
-                       min_samples_leaf=1, min_samples_split=2, min_weight_fraction_leaf=0.0, n_estimators=200, n_jobs=None, oob_score=False, random_state=0, verbose=0, warm_start=False)
-predictions = text_classifier.predict(x_test)
+# text_classifier = RandomForestClassifier(n_estimators=200, random_state=0)
+# text_classifier.fit(x_train, y_train)
+# RandomForestClassifier(bootstrap=True, class_weight=None, criterion="gini", max_depth=None, max_features="auto", max_leaf_nodes=None, min_impurity_decrease=0.0,
+#                        min_samples_leaf=1, min_samples_split=2, min_weight_fraction_leaf=0.0, n_estimators=200, n_jobs=None, oob_score=False, random_state=0, verbose=0, warm_start=False)
+# predictions = text_classifier.predict(x_test)
 
-print("Random Forest Classifier: \n")
-print(confusion_matrix(y_test, predictions))
-print(classification_report(y_test, predictions))
-print(accuracy_score(y_test, predictions))
-print("\n")
+# print("Random Forest Classifier: \n")
+# print(confusion_matrix(y_test, predictions))
+# print(classification_report(y_test, predictions))
+# print(accuracy_score(y_test, predictions))
+# print("\n")
 
-# Naive Bayes
-print("Naive Bayes classifier \n")
-nb = MultinomialNB(alpha=1.0, class_prior=None, fit_prior=True)
-nb.fit(x_train, y_train)
-y_pred_class = nb.predict(x_test)
-print(accuracy_score(y_test, y_pred_class))
-print(confusion_matrix(y_test, y_pred_class))
-print("\n")
+# # Naive Bayes
+# print("Naive Bayes classifier \n")
+# nb = MultinomialNB(alpha=1.0, class_prior=None, fit_prior=True)
+# nb.fit(x_train, y_train)
+# y_pred_class = nb.predict(x_test)
+# print(accuracy_score(y_test, y_pred_class))
+# print(confusion_matrix(y_test, y_pred_class))
+# print("\n")
+
+# print("SVM Classifier \n")
+# svm = SGDClassifier(loss="hinge", penalty="l2", alpha=1e-3,
+#                     random_state=42, max_iter=5, tol=None)
+# svm.fit(x_train, y_train)
+# svm_predicted = svm.predict(x_test)
+# print("SVM accuracy ", np.mean(svm_predicted == y_test))
+# print(classification_report(y_test, svm_predicted))
