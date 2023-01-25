@@ -30,7 +30,7 @@ data = data.drop(['Id', 'Date', 'Query', 'User_name'], axis=1)
 data = data.sample(10000)
 # data = data[data.Text.notnull()]
 
-sentiment = {0: "Negative", 4: "Positive"}
+sentiment = {0: "Negative", 2: "Neutral", 4: "Positive"}
 
 
 def sentimentDecoder(label):
@@ -125,11 +125,12 @@ print(confusion_matrix(y_test, grid_predictions))
 print("Accuracy:", accuracy_score(y_test, grid_predictions))
 print("\n")
 
-
 grid_nb = GridSearchCV(MultinomialNB(), parameters_nb,
                        scoring="accuracy", n_jobs=-1)
 grid_nb.fit(x_train, y_train)
-grid_predictions_nb = best_model.predict(x_test)
+best_params_nb = grid_nb.best_params_
+best_model_nb = grid_nb.best_estimator_
+grid_predictions_nb = best_model_nb.predict(x_test)
 
 print("Grid Search: Naive Bayes \n")
 print("Best score: ", grid_nb.best_score_)
@@ -143,11 +144,13 @@ print("\n")
 grid_svm = GridSearchCV(SGDClassifier(), parameters_svm,
                         scoring="accuracy", n_jobs=-1)
 grid_svm.fit(x_train, y_train)
-grid_predictions_svm = best_model.predict(x_test)
+best_params_svm = grid_svm.best_params_
+best_model_svm = grid_svm.best_estimator_
+grid_predictions_svm = best_model_svm.predict(x_test)
 
 print("Grid Search: SVM \n")
 print("Best score: ", grid_svm.best_score_)
-print("Best parameters:", grid_svm.best_params_)
+print("Best parameters:", best_params_svm)
 print("Best Model: ", grid_svm.best_estimator_)
 print(classification_report(y_test, grid_predictions_svm))
 print(confusion_matrix(y_test, grid_predictions_svm))
@@ -156,10 +159,9 @@ print("\n")
 
 # Use the best model of the naive bayes search on tweets from twitter
 # Get access to api
-best_model = grid_nb.best_estimator_
 api = twitterAuth()
 # Set query and number of tweets to get
-query = "elonmusk"
+query = "google"
 numberOfTweets = 100
 tweets = getTweets(query, numberOfTweets)
 processed_tweets = []
@@ -172,20 +174,36 @@ for tweet in tweets:
         processed_tweets.append(text)
 
 vectorized_tweets = vectorize(processed_tweets, vectorizer)
-sentiment_predictions = best_model.predict(vectorized_tweets)
+sentiment_predictions = best_model_nb.predict(vectorized_tweets)
+
 # Zip the tweets and predictions together
-tweet_predictions = zip(tweets, sentiment_predictions)
-# Print tweet and prediction for each tweet
+tweet_predictions = list(zip(processed_tweets, sentiment_predictions))
+tweet_sentiment = pd.DataFrame.from_records(
+    tweet_predictions, columns=["tweet", "sentiment"])
+# Match original tweet with prediction
+for i, tweet in enumerate(tweets):
+    if hasattr(tweet, 'retweeted_status'):
+        original_tweet = tweet.retweeted_status.full_text
+    else:
+        original_tweet = tweet.full_text
+    sentiment = sentiment_predictions[i]
+    tweet_sentiment.loc[i] = [original_tweet, sentiment]
+    # Print tweet and prediction for each tweet
 print("\n###################\n")
-for tweet, sentiment_predictions in tweet_predictions:
-    try:
-        print(f"Tweet: {tweet.retweeted_status.full_text}")
-        print(f"Prediction: {sentiment_predictions}")
-        print("\n")
-    except:
-        print(f"Tweet: {tweet.full_text}")
-        print(f"Prediction: {sentiment_predictions}")
-        print("\n")
+
+for index, row in tweet_sentiment.iterrows():
+
+    print("Tweet:", row["tweet"], "\n", "Sentiment:", row["sentiment"])
+    print("\n")
+# for tweet in tweet_sentiment:
+#     try:
+#         print(f"Retweet: {tweet.retweeted_status.full_text}")
+#         print(f"Prediction: {sentiment_predictions}")
+#         print("\n")
+#     except:
+#         print(f"Tweet: {tweet.full_text}")
+#         print(f"Prediction: {sentiment_predictions}")
+#         print("\n")
 print("\n###################\n")
 
 # Train data using ML classifier
